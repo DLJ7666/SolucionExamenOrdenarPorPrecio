@@ -2,7 +2,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { StyleSheet, FlatList, Pressable, View } from 'react-native'
 
-import { getAll, remove } from '../../api/RestaurantEndpoints'
+import { getAll, remove, toggleSort } from '../../api/RestaurantEndpoints'
 import ImageCard from '../../components/ImageCard'
 import TextSemiBold from '../../components/TextSemibold'
 import TextRegular from '../../components/TextRegular'
@@ -26,6 +26,28 @@ export default function RestaurantsScreen ({ navigation, route }) {
     }
   }, [loggedInUser, route])
 
+  const toggleRestaurantProductsOrder = async (restaurant) => {
+    try {
+      const modifiedRestaurant = await toggleSort(restaurant.id)
+      if (modifiedRestaurant) {
+        await fetchRestaurants()
+        showMessage({
+          message: `Restaurant ${restaurant.name} succesfully changed sorting method`,
+          type: 'success',
+          style: GlobalStyles.flashStyle,
+          titleStyle: GlobalStyles.flashTextStyle
+        })
+      }
+    } catch (error) {
+      showMessage({
+        message: `There was an error while changing products order of the restaurant ${restaurant.name}. ${error.message}`,
+        type: 'error',
+        style: GlobalStyles.flashStyle,
+        titleStyle: GlobalStyles.flashTextStyle
+      })
+    }
+  }
+
   const renderRestaurant = ({ item }) => {
     return (
       <ImageCard
@@ -40,6 +62,12 @@ export default function RestaurantsScreen ({ navigation, route }) {
           <TextSemiBold>Avg. service time: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.averageServiceMinutes} min.</TextSemiBold></TextSemiBold>
         }
         <TextSemiBold>Shipping: <TextSemiBold textStyle={{ color: GlobalStyles.brandPrimary }}>{item.shippingCosts.toFixed(2)}€</TextSemiBold></TextSemiBold>
+        {item.priceSorted &&
+        <TextRegular>Currently sorting products by <TextSemiBold>price</TextSemiBold></TextRegular>
+        }
+        {!item.priceSorted &&
+        <TextRegular>Currently sorting products by <TextSemiBold>default</TextSemiBold></TextRegular>
+        }
         <View style={styles.actionButtonsContainer}>
           <Pressable
             onPress={() => navigation.navigate('EditRestaurantScreen', { id: item.id })
@@ -74,6 +102,23 @@ export default function RestaurantsScreen ({ navigation, route }) {
             <MaterialCommunityIcons name='delete' color={'white'} size={20}/>
             <TextRegular textStyle={styles.text}>
               Delete
+            </TextRegular>
+          </View>
+        </Pressable>
+        <Pressable
+            onPress={ async () => await toggleRestaurantProductsOrder(item) }
+            style={({ pressed }) => [
+              {
+                backgroundColor: item.priceSorted
+                  ? GlobalStyles.brandSuccess
+                  : GlobalStyles.brandSuccessDisabled
+              },
+              styles.actionButton
+            ]}>
+          <View style={[{ flex: 1, flexDirection: 'row', justifyContent: 'center' }]}>
+            <MaterialCommunityIcons name='sort' color={'white'} size={20}/>
+            <TextRegular textStyle={styles.text}>
+              Sort by {item.priceSorted ? 'default' : 'price'}
             </TextRegular>
           </View>
         </Pressable>
@@ -195,7 +240,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignSelf: 'center',
     flexDirection: 'column',
-    width: '50%'
+    width: '33%'
   },
   actionButtonsContainer: {
     flexDirection: 'row',
